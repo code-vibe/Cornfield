@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Todo API Tester</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #333;
+            text-align: center;
+        }
+        .test-section {
+            margin: 20px 0;
+            padding: 15px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+        }
+        button {
+            background: #007cba;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover {
+            background: #005a87;
+        }
+        .result {
+            background: #f8f9fa;
+            border: 1px solid #e9ecef;
+            border-radius: 4px;
+            padding: 10px;
+            margin: 10px 0;
+            font-family: 'Courier New', monospace;
+            white-space: pre-wrap;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+        input[type="text"] {
+            width: 300px;
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            margin: 5px;
+        }
+        .success {
+            color: #28a745;
+        }
+        .error {
+            color: #dc3545;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🧪 Todo API Tester</h1>
+        <p>Test all the Todo API endpoints below:</p>
+
+        <div class="test-section">
+            <h3>1. Health Check</h3>
+            <button onclick="testHealth()">Test Health Endpoint</button>
+            <div id="health-result" class="result"></div>
+        </div>
+
+        <div class="test-section">
+            <h3>2. Get All Todos</h3>
+            <button onclick="getAllTodos()">Get All Todos</button>
+            <button onclick="getActiveTodos()">Get Active Todos</button>
+            <button onclick="getCompletedTodos()">Get Completed Todos</button>
+            <div id="todos-result" class="result"></div>
+        </div>
+
+        <div class="test-section">
+            <h3>3. Create New Todo</h3>
+            <input type="text" id="new-todo-text" placeholder="Enter todo text..." value="Test todo from web page">
+            <button onclick="createTodo()">Create Todo</button>
+            <div id="create-result" class="result"></div>
+        </div>
+
+        <div class="test-section">
+            <h3>4. Update Todo</h3>
+            <input type="text" id="update-todo-id" placeholder="Enter todo ID to update...">
+            <button onclick="markComplete()">Mark as Complete</button>
+            <button onclick="markIncomplete()">Mark as Incomplete</button>
+            <div id="update-result" class="result"></div>
+        </div>
+
+        <div class="test-section">
+            <h3>5. Delete Todo</h3>
+            <input type="text" id="delete-todo-id" placeholder="Enter todo ID to delete...">
+            <button onclick="deleteTodo()">Delete Todo</button>
+            <button onclick="clearCompleted()">Clear All Completed</button>
+            <div id="delete-result" class="result"></div>
+        </div>
+
+        <div class="test-section">
+            <h3>6. Get Statistics</h3>
+            <button onclick="getStats()">Get Todo Stats</button>
+            <div id="stats-result" class="result"></div>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE = 'http://localhost:5000/api';
+
+        async function apiCall(endpoint, method = 'GET', data = null) {
+            try {
+                const options = {
+                    method,
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                };
+
+                if (data) {
+                    options.body = JSON.stringify(data);
+                }
+
+                const response = await fetch(`${API_BASE}${endpoint}`, options);
+                const result = await response.json();
+                return { success: response.ok, data: result, status: response.status };
+            } catch (error) {
+                return { success: false, error: error.message };
+            }
+        }
+
+        function displayResult(elementId, result) {
+            const element = document.getElementById(elementId);
+            if (result.success) {
+                element.className = 'result success';
+                element.textContent = JSON.stringify(result.data, null, 2);
+            } else {
+                element.className = 'result error';
+                element.textContent = `Error: ${result.error || result.data?.message || 'Unknown error'}`;
+            }
+        }
+
+        async function testHealth() {
+            const result = await apiCall('/health');
+            displayResult('health-result', result);
+        }
+
+        async function getAllTodos() {
+            const result = await apiCall('/todos');
+            displayResult('todos-result', result);
+        }
+
+        async function getActiveTodos() {
+            const result = await apiCall('/todos?filter=active');
+            displayResult('todos-result', result);
+        }
+
+        async function getCompletedTodos() {
+            const result = await apiCall('/todos?filter=completed');
+            displayResult('todos-result', result);
+        }
+
+        async function createTodo() {
+            const text = document.getElementById('new-todo-text').value;
+            if (!text.trim()) {
+                alert('Please enter todo text');
+                return;
+            }
+            const result = await apiCall('/todos', 'POST', { text });
+            displayResult('create-result', result);
+            if (result.success) {
+                document.getElementById('update-todo-id').value = result.data.data.id;
+                document.getElementById('delete-todo-id').value = result.data.data.id;
+            }
+        }
+
+        async function markComplete() {
+            const id = document.getElementById('update-todo-id').value;
+            if (!id) {
+                alert('Please enter a todo ID');
+                return;
+            }
+            const result = await apiCall(`/todos/${id}`, 'PUT', { completed: true });
+            displayResult('update-result', result);
+        }
+
+        async function markIncomplete() {
+            const id = document.getElementById('update-todo-id').value;
+            if (!id) {
+                alert('Please enter a todo ID');
+                return;
+            }
+            const result = await apiCall(`/todos/${id}`, 'PUT', { completed: false });
+            displayResult('update-result', result);
+        }
+
+        async function deleteTodo() {
+            const id = document.getElementById('delete-todo-id').value;
+            if (!id) {
+                alert('Please enter a todo ID');
+                return;
+            }
+            const result = await apiCall(`/todos/${id}`, 'DELETE');
+            displayResult('delete-result', result);
+        }
+
+        async function clearCompleted() {
+            const result = await apiCall('/todos/completed/clear', 'DELETE');
+            displayResult('delete-result', result);
+        }
+
+        async function getStats() {
+            const result = await apiCall('/stats');
+            displayResult('stats-result', result);
+        }
+
+        // Auto-test health on page load
+        window.addEventListener('load', testHealth);
+    </script>
+</body>
+</html>
